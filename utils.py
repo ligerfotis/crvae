@@ -217,11 +217,11 @@ def calc_au(model, test_data_batch, delta=0.01):
 
 
 def save_model(checkpoint, model_name, args):
-    paths = ["models/model_checkpoints/"]
+    paths = ["model/model_checkpoints/"]
     for path in paths:
         if not os.path.isdir(path):
             os.makedirs(path)
-    save_ckp(checkpoint, f"models/model_checkpoints/{model_name}")
+    save_ckp(checkpoint, f"model/model_checkpoints/{model_name}")
 
 
 def save_ckp(state, checkpoint_dir):

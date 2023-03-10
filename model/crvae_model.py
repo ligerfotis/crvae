@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 
-from decoder import Decoder
+from model.decoder import Decoder
 from utils import recon_loss
-from variatonal_encoder import Encoder
+from model.variatonal_encoder import Encoder
 
 
 class CRVAE(nn.Module):
