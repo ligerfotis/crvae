@@ -45,7 +45,7 @@ class Trainer:
         pytorch_total_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"Model's total number of trainable parameters:{pytorch_total_params}\n")
         # retrieve the name of the model
-        self.model_name = f"{self.args.dataset}_crvae_custom_l{self.args.z_dim}_s{self.args.seed}"
+        self.model_name = f"{self.args.dataset}_beta{self.args.beta}_gamma{self.args.gamma}_crvae_custom_l{self.args.z_dim}_s{self.args.seed}"
         # Create a discriminator model. It wil be used to compute the mutual information (MI) between an image and
         # its representation
         self.D = Discriminator(self.args).to(self.model.device)

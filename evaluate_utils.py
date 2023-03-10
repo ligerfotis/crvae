@@ -45,6 +45,6 @@ def evaluate(test_loader, model, args):
     total_reconstruction_loss /= num_batches
     total_kl_loss /= num_batches
 
-    print(f"Evaluate: Total loss:{total_loss:.3f}|MSE:{total_reconstruction_loss:.3f}|KL:{total_kl_loss:.3f}")
+    print(f"Evaluate: Total loss:{total_loss:.3f}|Reconstruction:{total_reconstruction_loss:.3f}|KL:{total_kl_loss:.3f}")
 
     return total_loss, total_reconstruction_loss, total_kl_loss
