@@ -1,2 +1,4 @@
 /data/
 /model/model_checkpoints/
+/logs/
+/visualizations/
