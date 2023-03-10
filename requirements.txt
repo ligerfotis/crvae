@@ -1,0 +1,12 @@
+wandb
+tqdm
+matplotlib
+numpy
+scikit-learn
+scipy
+seaborn
+pytorch_metric_learning
+record_keeper
+tensorboard
+torchviz
+imutils
