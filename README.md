@@ -6,5 +6,5 @@
 
 ### Train
 
-    python3 train/main.py -d MNIST --z-dim 16 -bs 256 -e 1 -si 1 -lr 1e-3 -nw 8 -sh -aug --alpha 1 --beta 1 --gamma 1 --seed 101 --loss mse
+    python3 train/main.py -d MNIST --z-dim 16 -bs 256 -e 50 -si 10 -lr 1e-3 -nw 8 -sh --beta 1 --gamma 1 --seed 101 --loss mse --opt sgd
 

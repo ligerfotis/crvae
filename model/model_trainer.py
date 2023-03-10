@@ -2,10 +2,11 @@ import csv
 import os
 import sys
 
+from model.crvae_model import CRVAE
+
 path = os.getcwd()
 sys.path.append(path)
 
-from crvae_model import CRVAE
 from evaluate_utils import evaluate, denormalize
 from plot_utils import plot_image_reconstruction, viz_latent_space
 from utils import *

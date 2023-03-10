@@ -57,8 +57,6 @@ def get_args(parser):
                         help=' reconstruction loss function to use. currently supporting mse and bce')
     parser.add_argument('-ni', '--norm-input', action='store_true',
                         help='normalize input')
-    parser.add_argument('-aug', '--aug-input', action='store_true',
-                        help='augment input')
     parser.add_argument('-sh', '--shuffle', action='store_true',
                         help='shuffle train dataloader')
     parser.add_argument('-opt', '--optimizer', default='sgd',
