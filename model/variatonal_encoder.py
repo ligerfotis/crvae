@@ -12,6 +12,7 @@ class Encoder(nn.Module):
         # convolutional encoder
         self.encoder_cnn = nn.Sequential(
             nn.Conv2d(in_channel, 32, 3, stride=2),
+            nn.BatchNorm2d(32),
             nn.ReLU(True),
             nn.Conv2d(32, 64, 3, stride=2, padding=1),
             nn.BatchNorm2d(64),

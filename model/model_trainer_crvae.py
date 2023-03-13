@@ -63,22 +63,23 @@ class Trainer:
         # file to store the logs
         self.log_file = f"logs/{self.model_name}_logs.csv"
         # initialize the log file
-        init_log_file(self.log_file, self.model_name)
+        self.log_file = init_log_file(self.log_file, self.model_name)
 
-    def train_step(self, img_pair_1):
+    def train_step(self, img_pair_1, img_org):
         self.model.train()
         # get the images
         img_1, img_2 = img_pair_1
         # move the images to the device
+        img_org = img_org.cuda(non_blocking=True)
         img_1 = img_1.cuda(non_blocking=True)
         img_2 = img_2.cuda(non_blocking=True)
         # get contrastive loss of the two views
-        reconstructed, _, mu, logvar, q, k, con_loss = self.model(img_1, img_2)
+        reconstructed, _, mu, logvar, q, k, con_loss = self.model(img_1, img_2, img_org)
         # squeeze the dimensions of the mu and logvar
         mu = mu.squeeze()
         logvar = logvar.squeeze()
         # Calculate reconstruction loss
-        reconstruction_loss = self.model.reconstruction_loss(reconstructed, img_1).sum([1, 2, 3]).mean()
+        reconstruction_loss = self.model.reconstruction_loss(reconstructed, img_org).sum([1, 2, 3]).mean()
         # Calculate KL divergence
         kld = kl_divergence(mu, logvar)
         # Calculate the contrastive loss InfoNCE
@@ -89,8 +90,6 @@ class Trainer:
         self.optimizer.zero_grad()
         # compute the gradients w.r.t. elbo loss
         loss.backward()
-        # clip gradients
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
         # update the parameters
         self.optimizer.step()
         return loss.item(), reconstruction_loss.item(), kld.item(), contrastive_loss
@@ -109,11 +108,13 @@ class Trainer:
             # set model parameters to trainable
             self.model.train()
             # initialize the training bar
-            train_bar = tqdm(self.train_loader, position=0, leave=True)
+            train_bar = tqdm(zip(self.train_loader, self.validation_loader), position=0, leave=True)
             # iterate over the training data
-            for img_pair in train_bar:
+            for img_pairs in train_bar:
+                img_pair = img_pairs[0]
+                img_org = img_pairs[0][0]
                 # perform a training step
-                self.loss, bce_loss, kld, self.contrastive_loss = self.train_step(img_pair)
+                self.loss, bce_loss, kld, self.contrastive_loss = self.train_step(img_pair, img_org)
                 # update the training losses
                 self.total_loss += self.loss
                 self.total_reconstruction_loss += bce_loss
@@ -136,6 +137,57 @@ class Trainer:
             # evaluate the model
             self.evaluate(epoch)
 
+    def train_loop2(self):
+        # resume from a model checkpoint
+        if self.args.resume:
+            checkpoint = torch.load(self.args.load_path)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint['epoch']
+        else:
+            start_epoch = 1
+
+        for epoch in range(start_epoch, self.args.epochs + 1):
+            # set model parameters to trainable
+            self.model.train()
+            # initialize the training bar
+            train_bar = tqdm(zip(self.train_loader, self.validation_loader), position=0, leave=True)
+            if 0 < epoch < 10:
+                self.alpha = 1
+                self.beta = 1
+                self.gamma = 0
+            else:
+                self.alpha = 0.5
+                self.beta = 0.5
+                self.gamma = 1
+
+            # iterate over the training data
+            for img_pairs in train_bar:
+                img_pair = img_pairs[0]
+                img_org = img_pairs[0][0]
+                # perform a training step
+                self.loss, bce_loss, kld, self.contrastive_loss = self.train_step(img_pair, img_org)
+                # update the training losses
+                self.total_loss += self.loss
+                self.total_reconstruction_loss += bce_loss
+                self.total_kl_loss += kld
+                self.total_contrastive_loss += self.contrastive_loss
+                # update the progress bar
+                train_bar.set_description(
+                    'Epoch: [{}/{}] '
+                    'lr: {:.6f} '
+                    'Loss: {:.4f} '
+                    'Rec/tion: {:.4f} '
+                    'KL: {:.4f} '
+                    'NCE: {:.4f} '
+                    'alpha: {:.4f} '
+                    'beta: {:.4f} '
+                    'gamma: {:.4f} '
+                    'delta: {:.4f} '.format(epoch, self.args.epochs, self.args.learning_rate, self.loss, bce_loss, kld,
+                                            self.contrastive_loss, self.alpha, self.beta,
+                                            self.gamma, self.args.delta))
+            # evaluate the model
+            self.evaluate(epoch)
     def evaluate(self, epoch):
         # Averaging out loss over entire batch
         num_of_batches = len(self.validation_loader)

@@ -9,7 +9,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
-from torchvision.datasets import MNIST
+from torchvision.datasets import EMNIST
 from tqdm import tqdm
 
 # definitions of train and test transforms
@@ -31,7 +31,7 @@ def get_args(parser):
     :return: # the parser with the added arguments
     """
     # the dataset to train on
-    parser.add_argument('-d', '--dataset', default="MNIST", type=str)
+    parser.add_argument('-d', '--dataset', default="EMNIST", type=str)
     # the size of the latent space representation
     parser.add_argument('-zd', '--z-dim', default=64, type=int,
                         help='the dimension of the latent space representation')
@@ -82,9 +82,9 @@ def get_args(parser):
     return args
 
 
-class MNISTPair(MNIST):
+class EMNISTPair(EMNIST):
     """
-    This is a modified version of the MNIST dataset class from torchvision.
+    This is a modified version of the EMNIST dataset class from torchvision.
     It returns a pair of stochastic augmentations of an image.
     """
 
@@ -338,15 +338,15 @@ def get_datasets():
     :return: train_dataset, memory_data, test_dataset
     """
     # root folder for the dataset
-    root = "./data/MNIST"
+    root = "./data/EMNIST"
     # get the train dataset
-    train_dataset = MNISTPair(root=f"{root}/train", train=True, transform=train_transform,
+    train_dataset = EMNISTPair(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
                               download=True)
     # get the train dataset with the test transform for validation in the semisupevised setting
-    memory_data = MNIST(root=f"{root}/train", train=True, transform=test_transform,
+    memory_data = EMNIST(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
                         download=True)
     # get the test dataset
-    test_dataset = datasets.MNIST(root=f"{root}/test", train=False, transform=test_transform,
+    test_dataset = datasets.EMNIST(root=f"{root}/test", train=False, transform=test_transform, split='balanced',
                                   download=True)
     return train_dataset, memory_data, test_dataset
 
@@ -380,3 +380,4 @@ def init_log_file(log_file, model_name):
                 ['epoch', 'lr', 'train_loss', 'train_reconstruction_loss', 'train_kl_loss',
                  'train_contrastive_loss', 'KNN_acc',
                  'linear_acc', 'alpha', 'beta', 'gamma', 'delta', 'mi', 'au', 'eval_loss', 'eval_recon', 'eval_kl'])
+    return log_file

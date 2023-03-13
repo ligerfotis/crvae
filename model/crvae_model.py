@@ -6,6 +6,16 @@ from utils import recon_loss
 from model.variatonal_encoder import Encoder
 
 
+def reparameterize(mu, log_var, sampling_distribution):
+    # sample noise from a normal distribution
+    epsilon = sampling_distribution.sample(mu.shape)
+    # get the std
+    sigma = torch.exp(log_var / 2)
+    # re-parameterization trick
+    z = mu + epsilon * sigma
+    return z
+
+
 class CRVAE(nn.Module):
     def __init__(self, z_dim=128, channels=3, beta=1, gamma=1, K=4096, m=0.99, T=0.1, device=None, loss_type='mse'):
         super().__init__()
@@ -31,9 +41,9 @@ class CRVAE(nn.Module):
         # initialize the reconstruction loss
         self.reconstruction_loss = recon_loss(loss_type)
 
-    def encode(self, im1, im2):
+    def encode(self, im1, im2, img_org):
         # encode
-        z, mu, var = self.encoder(im1)
+        z, mu, var = self.encoder(img_org)
         # update the key encoder
         with torch.no_grad():  # no gradient to keys
             self._momentum_update_key_encoder()
@@ -42,9 +52,9 @@ class CRVAE(nn.Module):
         self._dequeue_and_enqueue(k)
         return con_loss, z, q, mu, var, labels, k
 
-    def forward(self, im1, im2=None, inference=False):
+    def forward(self, im1, im2=None, img_org=None, inference=False):
         if not inference:
-            con_loss, z, q, mu, var, labels, k = self.encode(im1, im2)
+            con_loss, z, q, mu, var, labels, k = self.encode(im1, im2, img_org)
         else:
             z, mu, var = self.encoder(im1)
             q = z
@@ -57,15 +67,6 @@ class CRVAE(nn.Module):
 
     def get_kl(self):
         return self.encoder.kl
-
-    def reparameterize(mu, log_var, sampling_distribution):
-        # sample noise from a normal distribution
-        epsilon = sampling_distribution.sample(mu.shape)
-        # get the std
-        sigma = torch.exp(log_var / 2)
-        # re-parameterization trick
-        z = mu + epsilon * sigma
-        return z
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):

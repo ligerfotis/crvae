@@ -1,6 +1,6 @@
 import argparse
 
-from model.model_trainer import Trainer
+from model.model_trainer_crvae import Trainer
 from utils import get_args
 
 # set the parser
