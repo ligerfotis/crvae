@@ -3,6 +3,7 @@ import os
 import sys
 
 from model.crvae_model import CRVAE
+import wandb
 
 path = os.getcwd()
 sys.path.append(path)
@@ -36,7 +37,7 @@ class Trainer:
         # create the model
         self.model = CRVAE(z_dim=self.args.z_dim, channels=self.args.color_channels, beta=self.args.beta,
                            gamma=self.args.gamma, K=self.args.K, m=0.99, T=0.1, device=self.device,
-                           loss_type=self.args.loss).to(self.device)
+                           loss_type=self.args.loss, model_size=self.args.model_size).to(self.device)
         if self.args.verbose:
             print(self.model)
         # initialize the optimizer
@@ -103,7 +104,14 @@ class Trainer:
             start_epoch = checkpoint['epoch']
         else:
             start_epoch = 1
-
+        # initialize wandb logging tool
+        if self.args.wandb:
+            wandb.init(project="cr-vae", config=self.args)
+            # change default run name
+            wandb.run.name = self.model_name
+            # save training configuration
+            wandb.config.update(self.args)
+        # iterate over the epochs
         for epoch in range(start_epoch, self.args.epochs + 1):
             # set model parameters to trainable
             self.model.train()
@@ -135,7 +143,8 @@ class Trainer:
                                             self.contrastive_loss, self.args.alpha, self.args.beta,
                                             self.args.gamma, self.args.delta))
             # evaluate the model
-            self.evaluate(epoch)
+            self.evaluate(epoch, wandb_log=self.args.wandb)
+        wandb.finish()
 
     def train_loop2(self):
         # resume from a model checkpoint
@@ -187,8 +196,9 @@ class Trainer:
                                             self.contrastive_loss, self.alpha, self.beta,
                                             self.gamma, self.args.delta))
             # evaluate the model
-            self.evaluate(epoch)
-    def evaluate(self, epoch):
+            self.evaluate(epoch, wandb_log=self.args.wandb)
+
+    def evaluate(self, epoch, wandb_log=True):
         # Averaging out loss over entire batch
         num_of_batches = len(self.validation_loader)
         self.total_loss /= num_of_batches
@@ -261,11 +271,36 @@ class Trainer:
                                  self.args.gamma, self.args.delta, mi, au, eval_loss, eval_mse.item(),
                                  eval_kl.item()])
             # plot the image reconstruction
-            plot_image_reconstruction(test_batch, reconstruction, self.args, print_image=True,
+            reconstructed_img = plot_image_reconstruction(test_batch, reconstruction, self.args, print_image=True,
                                       model_name=self.model_name)
+            # Save logs in wandb
+            if wandb_log:
+                wandb.log({"epoch": epoch,
+                           "lr": lr,
+                           "train_loss": self.total_loss,
+                           "train_reconstruction_loss": self.total_reconstruction_loss,
+                           "train_kl_loss": self.total_kl_loss,
+                           "train_contrastive_loss": self.total_contrastive_loss,
+                           "knn_acc": knn_acc,
+                           "linear_acc": linear_acc,
+                           "alpha": self.args.alpha,
+                           "beta": self.args.beta,
+                           "gamma": self.args.gamma,
+                           "delta": self.args.delta,
+                           "mi": mi,
+                           "au": au,
+                           "test_loss": eval_loss,
+                           "test_reconstruction_loss": eval_mse.item(),
+                           "test_kl_loss": eval_kl.item(),
+                           "reconstructed_img": wandb.Image(reconstructed_img, f"Test reconstruction epoch at {epoch} with loss {eval_loss}")})
+
+
         # final epoch
         if epoch == self.args.epochs:
             # plot the latent space of the test data using t-SNE
             tsne_title = f"Test data latent space at epoch {epoch}"
-            viz_latent_space(tsne_title, self.model, self.test_dataset, self.args,
+            tsne_img_array, tsne_name = viz_latent_space(tsne_title, self.model, self.test_dataset, self.args,
                              print_image=True, model_name=self.model_name)
+            if wandb_log:
+                # Save latent space in wandb
+                wandb.log({"latent_space": wandb.Image(tsne_img_array, tsne_name)})

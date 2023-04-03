@@ -17,14 +17,14 @@ def reparameterize(mu, log_var, sampling_distribution):
 
 
 class CRVAE(nn.Module):
-    def __init__(self, z_dim=128, channels=3, beta=1, gamma=1, K=4096, m=0.99, T=0.1, device=None, loss_type='mse'):
+    def __init__(self, z_dim=128, channels=3, beta=1, gamma=1, K=4096, m=0.99, T=0.1, device=None, loss_type='mse', model_size='small'):
         super().__init__()
         self.K = K
         self.m = m
         self.T = T
         self.device = device
-        self.encoder = Encoder(encoded_space_dim=z_dim, color_channels=channels)
-        self.encoder_target = Encoder(encoded_space_dim=z_dim, color_channels=channels)
+        self.encoder = Encoder(encoded_space_dim=z_dim, color_channels=channels, model_size=model_size)
+        self.encoder_target = Encoder(encoded_space_dim=z_dim, color_channels=channels, model_size=model_size)
         self.decoder = Decoder(encoded_space_dim=z_dim, color_channels=channels)
 
         self.beta = beta

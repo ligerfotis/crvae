@@ -6,31 +6,45 @@ from torch import nn
 
 class Encoder(nn.Module):
 
-    def __init__(self, encoded_space_dim, color_channels):
+    def __init__(self, encoded_space_dim, color_channels, model_size):
         super().__init__()
         in_channel = color_channels
         # convolutional encoder
-        self.encoder_cnn = nn.Sequential(
-            nn.Conv2d(in_channel, 32, 3, stride=2),
-            nn.BatchNorm2d(32),
-            nn.ReLU(True),
-            nn.Conv2d(32, 64, 3, stride=2, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(True),
-            nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(True),
-            nn.Conv2d(128, 256, 3, stride=1, padding=1),
-            nn.ReLU(True)
-        )
+        if model_size == "small":
+            self.encoder_cnn = nn.Sequential(
+                nn.Conv2d(in_channel, 32, 3, stride=2),
+                nn.BatchNorm2d(32),
+                nn.ReLU(True),
+                nn.Conv2d(32, 64, 3, stride=2, padding=1),
+                nn.ReLU(True),
+            )
+            # create the mu and log var layers
+            self.encoder_lin_mu = nn.Linear(7 * 7 * 64, encoded_space_dim)
+            self.encoder_lin_var = nn.Linear(7 * 7 * 64, encoded_space_dim)
+        else:
+            self.encoder_cnn = nn.Sequential(
+                nn.Conv2d(in_channel, 32, 3, stride=2),
+                nn.BatchNorm2d(32),
+                nn.ReLU(True),
+                nn.Conv2d(32, 64, 3, stride=2, padding=1),
+                nn.BatchNorm2d(64),
+                nn.ReLU(True),
+                nn.Conv2d(64, 128, 3, stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(True),
+                nn.Conv2d(128, 256, 3, stride=2, padding=1),
+                nn.BatchNorm2d(256),
+                nn.ReLU(True),
+            )
+            # create the mu and log var layers
+            self.encoder_lin_mu = nn.Linear(4 * 4 * 256, encoded_space_dim)
+            self.encoder_lin_var = nn.Linear(4 * 4 * 256, encoded_space_dim)
         # flattening layer
         self.flatten = nn.Flatten(start_dim=1)
         # relu layer
         self.relu = nn.ReLU(True)
 
-        # create the mu and log var layers
-        self.encoder_lin_mu = nn.Linear(4 * 4 * 256, encoded_space_dim)
-        self.encoder_lin_var = nn.Linear(4 * 4 * 256, encoded_space_dim)
+
 
     def forward(self, x):
         # pass through the encoder
