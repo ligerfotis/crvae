@@ -366,7 +366,7 @@ def get_datasets(dataset, augment=False):
             train_dataset = EMNISTPair(root=f"{root}/train", train=True, transform=train_transform, split='balanced',
                                   download=True)
         else:
-            train_dataset = EMNIST(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
+            train_dataset = EMNISTPair(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
                                   download=True)
         # get the train dataset with the test transform for validation in the semisupevised setting
         memory_data = EMNIST(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
