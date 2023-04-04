@@ -47,7 +47,8 @@ def get_args(parser):
     parser.add_argument('-ms', '--model-size', type=str, default='small', help='size of the model')
     # argument for augmnentation
     parser.add_argument('-aug', '--augment', action='store_true', help='use data augmentation')
-
+    # argument for the type of model
+    parser.add_argument('-at', '--ae-type', type=str, default='vae', help='type of autoencoder')
     parser.add_argument('-bs', '--batch-size', default=512, type=int)
     parser.add_argument('-e', '--epochs', default=10, type=int)
     parser.add_argument('-lr', '--learning-rate', default=1e-5, type=float)

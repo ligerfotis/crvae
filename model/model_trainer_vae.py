@@ -5,6 +5,8 @@ import sys
 from model.crvae_model import CRVAE
 import wandb
 
+from model.vae_model import VAE
+
 path = os.getcwd()
 sys.path.append(path)
 
@@ -16,7 +18,7 @@ from torch import optim
 from tqdm import tqdm
 
 
-class CRVAE_Trainer:
+class VAE_Trainer:
     def __init__(self, args):
         # set the device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -35,9 +37,8 @@ class CRVAE_Trainer:
                                                                                       self.args.num_workers)
         print("Training on {}".format(self.device))
         # create the model
-        self.model = CRVAE(z_dim=self.args.z_dim, channels=self.args.color_channels, beta=self.args.beta,
-                           gamma=self.args.gamma, K=self.args.K, m=0.99, T=0.1, device=self.device,
-                           loss_type=self.args.loss, model_size=self.args.model_size).to(self.device)
+        self.model = VAE(z_dim=self.args.z_dim, channels=self.args.color_channels, beta=self.args.beta,
+                         device=self.device,loss_type=self.args.loss, model_size=self.args.model_size).to(self.device)
         if self.args.verbose:
             print(self.model)
         # initialize the optimizer
@@ -66,16 +67,12 @@ class CRVAE_Trainer:
         # initialize the log file
         self.log_file = init_log_file(self.log_file, self.model_name)
 
-    def train_step(self, img_pair_1, img_org):
+    def train_step(self, img_org):
         self.model.train()
-        # get the images
-        img_1, img_2 = img_pair_1
         # move the images to the device
         img_org = img_org.cuda(non_blocking=True)
-        img_1 = img_1.cuda(non_blocking=True)
-        img_2 = img_2.cuda(non_blocking=True)
         # get contrastive loss of the two views
-        reconstructed, _, mu, logvar, q, k, con_loss = self.model(img_1, img_2, img_org)
+        reconstructed, _, mu, logvar = self.model(img_org)
         # squeeze the dimensions of the mu and logvar
         mu = mu.squeeze()
         logvar = logvar.squeeze()
@@ -83,17 +80,15 @@ class CRVAE_Trainer:
         reconstruction_loss = self.model.reconstruction_loss(reconstructed, img_org).sum([1, 2, 3]).mean()
         # Calculate KL divergence
         kld = kl_divergence(mu, logvar)
-        # Calculate the contrastive loss InfoNCE
-        contrastive_loss = con_loss.item()
         # compute the total loss
-        loss = self.alpha * reconstruction_loss + self.beta * kld + self.gamma * con_loss
+        loss = self.alpha * reconstruction_loss + self.beta * kld
         # The gradients are set to zero
         self.optimizer.zero_grad()
         # compute the gradients w.r.t. elbo loss
         loss.backward()
         # update the parameters
         self.optimizer.step()
-        return loss.item(), reconstruction_loss.item(), kld.item(), contrastive_loss
+        return loss.item(), reconstruction_loss.item(), kld.item()
 
     def train_loop(self):
         # resume from a model checkpoint
@@ -119,15 +114,16 @@ class CRVAE_Trainer:
             train_bar = tqdm(zip(self.train_loader, self.validation_loader), position=0, leave=True)
             # iterate over the training data
             for img_pairs in train_bar:
-                img_pair = img_pairs[0]
-                img_org = img_pairs[0][0]
+                if self.args.augment:
+                    img_org = img_pairs[0][0]
+                else:
+                    img_org = img_pairs[1][0]
                 # perform a training step
-                self.loss, bce_loss, kld, self.contrastive_loss = self.train_step(img_pair, img_org)
+                self.loss, bce_loss, kld = self.train_step(img_org)
                 # update the training losses
                 self.total_loss += self.loss
                 self.total_reconstruction_loss += bce_loss
                 self.total_kl_loss += kld
-                self.total_contrastive_loss += self.contrastive_loss
                 # update the progress bar
                 train_bar.set_description(
                     'Epoch: [{}/{}] '
@@ -135,68 +131,15 @@ class CRVAE_Trainer:
                     'Loss: {:.4f} '
                     'Rec/tion: {:.4f} '
                     'KL: {:.4f} '
-                    'NCE: {:.4f} '
                     'alpha: {:.4f} '
                     'beta: {:.4f} '
                     'gamma: {:.4f} '
                     'delta: {:.4f} '.format(epoch, self.args.epochs, self.args.learning_rate, self.loss, bce_loss, kld,
-                                            self.contrastive_loss, self.args.alpha, self.args.beta,
+                                            self.args.alpha, self.args.beta,
                                             self.args.gamma, self.args.delta))
             # evaluate the model
             self.evaluate(epoch, wandb_log=self.args.wandb)
         wandb.finish()
-
-    def train_loop2(self):
-        # resume from a model checkpoint
-        if self.args.resume:
-            checkpoint = torch.load(self.args.load_path)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            start_epoch = checkpoint['epoch']
-        else:
-            start_epoch = 1
-
-        for epoch in range(start_epoch, self.args.epochs + 1):
-            # set model parameters to trainable
-            self.model.train()
-            # initialize the training bar
-            train_bar = tqdm(zip(self.train_loader, self.validation_loader), position=0, leave=True)
-            if 0 < epoch < 10:
-                self.alpha = 1
-                self.beta = 1
-                self.gamma = 0
-            else:
-                self.alpha = 0.5
-                self.beta = 0.5
-                self.gamma = 1
-
-            # iterate over the training data
-            for img_pairs in train_bar:
-                img_pair = img_pairs[0]
-                img_org = img_pairs[0][0]
-                # perform a training step
-                self.loss, bce_loss, kld, self.contrastive_loss = self.train_step(img_pair, img_org)
-                # update the training losses
-                self.total_loss += self.loss
-                self.total_reconstruction_loss += bce_loss
-                self.total_kl_loss += kld
-                self.total_contrastive_loss += self.contrastive_loss
-                # update the progress bar
-                train_bar.set_description(
-                    'Epoch: [{}/{}] '
-                    'lr: {:.6f} '
-                    'Loss: {:.4f} '
-                    'Rec/tion: {:.4f} '
-                    'KL: {:.4f} '
-                    'NCE: {:.4f} '
-                    'alpha: {:.4f} '
-                    'beta: {:.4f} '
-                    'gamma: {:.4f} '
-                    'delta: {:.4f} '.format(epoch, self.args.epochs, self.args.learning_rate, self.loss, bce_loss, kld,
-                                            self.contrastive_loss, self.alpha, self.beta,
-                                            self.gamma, self.args.delta))
-            # evaluate the model
-            self.evaluate(epoch, wandb_log=self.args.wandb)
 
     def evaluate(self, epoch, wandb_log=True):
         # Averaging out loss over entire batch
@@ -204,7 +147,6 @@ class CRVAE_Trainer:
         self.total_loss /= num_of_batches
         self.total_reconstruction_loss /= num_of_batches
         self.total_kl_loss /= num_of_batches
-        self.total_contrastive_loss /= num_of_batches
 
         # update lr
         self.scheduler.step(self.total_loss)
@@ -214,7 +156,6 @@ class CRVAE_Trainer:
         self.train_loss_list.append(self.total_loss)
         self.train_reconstruction_loss_list.append(self.total_reconstruction_loss)
         self.train_kl_list.append(self.total_kl_loss)
-        self.train_contrastive_list.append(self.contrastive_loss)
 
         # store the model parameters to a dictionary for saving the model checkpoint
         checkpoint = {
