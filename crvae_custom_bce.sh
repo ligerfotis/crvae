@@ -3,7 +3,7 @@ latent=16
 epochs=50
 nw=16
 optimizer='sgd'
-loss='mse'
+loss='bce'
 batch=256
 datasets=("MNIST" "EMNIST")
 save_integral=1
@@ -19,7 +19,7 @@ do
         do
           for model_size in "small" "medium"
           do
-            python train/train_CRVAE_custom.py -d $dataset -si $save_integral --z-dim $latent -bs $batch -e $epochs --beta $beta --gamma $gamma -lr $lr -nw $nw -sh --seed $seed -opt $optimizer -l $loss --model-size $model_size --wandb
+            python main.py -d $dataset -si $save_integral --z-dim $latent -bs $batch -e $epochs --beta $beta --gamma $gamma -lr $lr -nw $nw -sh --seed $seed -opt $optimizer -l $loss --model-size $model_size --wandb
           done
         done
       done
