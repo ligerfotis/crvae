@@ -271,8 +271,10 @@ class Trainer:
                                  self.args.gamma, self.args.delta, mi, au, eval_loss, eval_mse.item(),
                                  eval_kl.item()])
             # plot the image reconstruction
-            reconstructed_img = plot_image_reconstruction(test_batch, reconstruction, self.args, print_image=True,
+            reconstructed_img_array = plot_image_reconstruction(test_batch, reconstruction, self.args, print_image=True,
                                       model_name=self.model_name)
+            reconstructed_name = f"Test reconstruction epoch at {epoch} with loss {eval_loss}"
+            reconstructed_image = wandb.Image(reconstructed_img_array, caption=reconstructed_name)
             # Save logs in wandb
             if wandb_log:
                 wandb.log({"epoch": epoch,
@@ -292,7 +294,7 @@ class Trainer:
                            "test_loss": eval_loss,
                            "test_reconstruction_loss": eval_mse.item(),
                            "test_kl_loss": eval_kl.item(),
-                           "reconstructed_img": wandb.Image(reconstructed_img, f"Test reconstruction epoch at {epoch} with loss {eval_loss}")})
+                           "reconstructed_img": reconstructed_image})
 
 
         # final epoch
