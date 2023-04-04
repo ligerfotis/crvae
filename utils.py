@@ -43,13 +43,14 @@ def get_args(parser):
     parser.add_argument('-r', '--resume', action='store_true', help='resume training from path given')
     # argument to use wandb
     parser.add_argument('-w', '--wandb', action='store_true', help='use wandb')
+    # argument for model size
+    parser.add_argument('-ms', '--model-size', type=str, default='small', help='size of the model')
 
     parser.add_argument('-bs', '--batch-size', default=512, type=int)
     parser.add_argument('-e', '--epochs', default=10, type=int)
     parser.add_argument('-lr', '--learning-rate', default=1e-5, type=float)
     parser.add_argument('-nw', '--num-workers', default=16, type=int)
     parser.add_argument('-si', '--save_integral', default=10, type=int)
-    parser.add_argument('-ms', '--model-size', type=str, default='small', help='size of the model')
     # parser.add_argument('-lp', '--load-path', type=str)
     # parser.add_argument('-ckp', '--checkpoint', action='store_true',
     #                     help='load model checkpoint. If false model dictionary is loaded')
