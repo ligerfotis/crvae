@@ -27,7 +27,7 @@ class Trainer:
         self.args.color_channels = 1
         self.args.size = [28, 28]
         # get the datasets
-        self.train_dataset, self.validation_dataset, self.test_dataset = get_datasets()
+        self.train_dataset, self.validation_dataset, self.test_dataset = get_datasets(self.args.dataset, self.args.augment)
         # get the dataloaders
         self.train_loader, self.validation_loader, self.test_loader = get_dataloaders(self.train_dataset,
                                                                                       self.validation_dataset,

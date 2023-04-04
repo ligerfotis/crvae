@@ -9,7 +9,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
-from torchvision.datasets import EMNIST
+from torchvision.datasets import EMNIST, MNIST
 from tqdm import tqdm
 
 # definitions of train and test transforms
@@ -45,6 +45,8 @@ def get_args(parser):
     parser.add_argument('-w', '--wandb', action='store_true', help='use wandb')
     # argument for model size
     parser.add_argument('-ms', '--model-size', type=str, default='small', help='size of the model')
+    # argument for augmnentation
+    parser.add_argument('-aug', '--augment', action='store_true', help='use data augmentation')
 
     parser.add_argument('-bs', '--batch-size', default=512, type=int)
     parser.add_argument('-e', '--epochs', default=10, type=int)
@@ -88,6 +90,22 @@ def get_args(parser):
 class EMNISTPair(EMNIST):
     """
     This is a modified version of the EMNIST dataset class from torchvision.
+    It returns a pair of stochastic augmentations of an image.
+    """
+
+    def __getitem__(self, index):
+        img = self.data[index]
+        img = Image.fromarray(img.to("cpu").detach().numpy())
+
+        if self.transform is not None:
+            im_1 = self.transform(img)
+            im_2 = self.transform(img)
+
+        return im_1, im_2
+
+class MNISTPair(MNIST):
+    """
+    This is a modified version of the MNIST dataset class from torchvision.
     It returns a pair of stochastic augmentations of an image.
     """
 
@@ -335,22 +353,39 @@ def get_dataloaders(train_dataset, memory_data, test_dataset, num_workers=4):
     return train_loader, validation_loader, test_loader
 
 
-def get_datasets():
+def get_datasets(dataset, augment=False):
     """
     # get the train, validation and test datasets
     :return: train_dataset, memory_data, test_dataset
     """
-    # root folder for the dataset
-    root = "./data/EMNIST"
-    # get the train dataset
-    train_dataset = EMNISTPair(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
-                              download=True)
-    # get the train dataset with the test transform for validation in the semisupevised setting
-    memory_data = EMNIST(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
-                        download=True)
-    # get the test dataset
-    test_dataset = datasets.EMNIST(root=f"{root}/test", train=False, transform=test_transform, split='balanced',
+    if dataset == 'EMNIST':
+        # root folder for the dataset
+        root = "./data/EMNIST"
+        # get the train dataset
+        if augment:
+            train_dataset = EMNISTPair(root=f"{root}/train", train=True, transform=train_transform, split='balanced',
                                   download=True)
+        else:
+            train_dataset = EMNIST(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
+                                  download=True)
+        # get the train dataset with the test transform for validation in the semisupevised setting
+        memory_data = EMNIST(root=f"{root}/train", train=True, transform=test_transform, split='balanced',
+                            download=True)
+        # get the test dataset
+        test_dataset = datasets.EMNIST(root=f"{root}/test", train=False, transform=test_transform, split='balanced',
+                                      download=True)
+    elif dataset == 'MNIST':
+        # root folder for the dataset
+        root = "./data/MNIST"
+        # get the train dataset
+        if augment:
+            train_dataset = MNISTPair(root=f"{root}/train", train=True, transform=train_transform, download=True)
+        else:
+            train_dataset = MNISTPair(root=f"{root}/train", train=True, transform=test_transform, download=True)
+        # get the train dataset with the test transform for validation in the semisupevised setting
+        memory_data = datasets.MNIST(root=f"{root}/train", train=True, transform=test_transform, download=True)
+        # get the test dataset
+        test_dataset = datasets.MNIST(root=f"{root}/test", train=False, transform=test_transform, download=True)
     return train_dataset, memory_data, test_dataset
 
 
