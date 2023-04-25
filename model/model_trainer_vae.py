@@ -26,8 +26,8 @@ class VAE_Trainer:
         # set the seed
         torch.manual_seed(self.args.seed)
         # set the dataset specific parameters
-        self.args.color_channels = 1 if self.args.dataset in ['mnist', 'fashion_mnist', 'emnist'] else 3
-        self.args.size = [28, 28] if self.args.dataset in ['mnist', 'fashion_mnist', 'emnist'] else [32, 32]
+        self.args.color_channels = 1 if self.args.dataset in ['MNIST', 'FashionMNIST', 'EMNIST'] else 3
+        self.args.size = [28, 28] if self.args.dataset in ['MNIST', 'FashionMNIST', 'EMNIST'] else [32, 32]
         # get the datasets
         self.train_dataset, self.validation_dataset, self.test_dataset = get_datasets(self.args.dataset, self.args.augment)
         # get the dataloaders

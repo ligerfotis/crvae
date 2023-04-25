@@ -5,7 +5,7 @@ nw=16
 optimizer='sgd'
 batch=256
 #datasets=("MNIST" "EMNIST")
-datasets=("FashionMNIST")
+datasets=("FashionMNIST" "CIFAR10")
 save_integral=1
 for beta in 1
 do
