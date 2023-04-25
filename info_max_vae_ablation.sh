@@ -4,7 +4,8 @@ epochs=50
 nw=16
 optimizer='sgd'
 batch=256
-datasets=("MNIST" "EMNIST")
+#datasets=("MNIST" "EMNIST")
+datasets=("FashionMNIST")
 save_integral=1
 for beta in 1
 do
@@ -14,13 +15,13 @@ do
     do
       for dataset in ${datasets[*]}
       do
-        for gamma in 0
+        for gamma in 1 1000
         do
           for lr in 1e-03
           do
-            for model_size in "small" "medium"
+            for model_size in "medium"
             do
-              python main.py -at vae -d $dataset -si $save_integral --z-dim $latent -bs $batch -e $epochs --beta $beta --gamma $gamma -lr $lr -nw $nw -sh --seed $seed -opt $optimizer -l $loss --model-size $model_size --wandb
+              python main.py -at infomax_vae -d $dataset -si $save_integral --z-dim $latent -bs $batch -e $epochs --beta $beta --gamma $gamma -lr $lr -nw $nw -sh --seed $seed -opt $optimizer -l $loss --model-size $model_size --wandb
             done
           done
         done

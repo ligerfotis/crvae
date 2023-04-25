@@ -9,7 +9,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
-from torchvision.datasets import EMNIST, MNIST
+from torchvision.datasets import EMNIST, MNIST, FashionMNIST
 from tqdm import tqdm
 
 # definitions of train and test transforms
@@ -120,6 +120,36 @@ class MNISTPair(MNIST):
             im_2 = self.transform(img)
 
         return im_1, im_2
+
+class FashionMNISTPair:
+    """
+    This is a modified version of the FashionMNIST dataset class from torchvision.
+    It returns a pair of stochastic augmentations of an image.
+    """
+
+    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
+        self.train = train
+        self.transform = transform
+        self.target_transform = target_transform
+        self.download = download
+
+        self.data = FashionMNIST(root, train=train, transform=transform, target_transform=target_transform,
+                                 download=download).data
+        self.targets = FashionMNIST(root, train=train, transform=transform, target_transform=target_transform,
+                                    download=download).targets
+
+    def __getitem__(self, index):
+        img = self.data[index]
+        img = Image.fromarray(img.to("cpu").detach().numpy())
+
+        if self.transform is not None:
+            im_1 = self.transform(img)
+            im_2 = self.transform(img)
+
+        return im_1, im_2
+
+    def __len__(self):
+        return len(self.data)
 
 
 def get_optimizer(model_parameteres, args):
@@ -388,6 +418,21 @@ def get_datasets(dataset, augment=False):
         memory_data = datasets.MNIST(root=f"{root}/train", train=True, transform=test_transform, download=True)
         # get the test dataset
         test_dataset = datasets.MNIST(root=f"{root}/test", train=False, transform=test_transform, download=True)
+    elif dataset == 'FashionMNIST':
+        # root folder for the dataset
+        root = "./data/FashionMNIST"
+        # get the train dataset
+        if augment:
+            train_dataset = FashionMNISTPair(root=f"{root}/train", train=True, transform=train_transform,
+                                            download=True)
+        else:
+            train_dataset = FashionMNISTPair(root=f"{root}/train", train=True, transform=test_transform,
+                                            download=True)
+        # get the train dataset with the test transform for validation in the semisupevised setting
+        memory_data = datasets.FashionMNIST(root=f"{root}/train", train=True, transform=test_transform, download=True)
+        # get the test dataset
+        test_dataset = datasets.FashionMNIST(root=f"{root}/test", train=False, transform=test_transform,
+                                            download=True)
     return train_dataset, memory_data, test_dataset
 
 
