@@ -9,7 +9,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
-from torchvision.datasets import EMNIST, MNIST, FashionMNIST
+from torchvision.datasets import EMNIST, MNIST, FashionMNIST, CIFAR10, CIFAR100
 from tqdm import tqdm
 
 # definitions of train and test transforms
@@ -23,6 +23,12 @@ train_transform = transforms.Compose([
 test_transform = transforms.Compose([
     transforms.ToTensor()])
 
+train_transform_cifar = transforms.Compose([
+    transforms.RandomResizedCrop((32, 32)),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+    transforms.RandomGrayscale(p=0.2),
+    transforms.ToTensor()])
 
 def get_args(parser):
     """
@@ -44,7 +50,7 @@ def get_args(parser):
     # argument to use wandb
     parser.add_argument('-w', '--wandb', action='store_true', help='use wandb')
     # argument for model size
-    parser.add_argument('-ms', '--model-size', type=str, default='small', help='size of the model')
+    parser.add_argument('-ms', '--model-size', type=str, default='large', help='size of the model')
     # argument for augmnentation
     parser.add_argument('-aug', '--augment', action='store_true', help='use data augmentation')
     # argument for the type of model
@@ -151,6 +157,37 @@ class FashionMNISTPair:
     def __len__(self):
         return len(self.data)
 
+class CIFAR10Pair(CIFAR10):
+    """
+    This is a modified version of the CIFAR10 dataset class from torchvision.
+    It returns a pair of stochastic augmentations of an image.
+    """
+
+    def __getitem__(self, index):
+        img = self.data[index]
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            im_1 = self.transform(img)
+            im_2 = self.transform(img)
+
+        return im_1, im_2
+
+class CIFAR100Pair(CIFAR100):
+    """
+    This is a modified version of the CIFAR100 dataset class from torchvision.
+    It returns a pair of stochastic augmentations of an image.
+    """
+
+    def __getitem__(self, index):
+        img = self.data[index]
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            im_1 = self.transform(img)
+            im_2 = self.transform(img)
+
+        return im_1, im_2
 
 def get_optimizer(model_parameteres, args):
     """
@@ -433,6 +470,31 @@ def get_datasets(dataset, augment=False):
         # get the test dataset
         test_dataset = datasets.FashionMNIST(root=f"{root}/test", train=False, transform=test_transform,
                                             download=True)
+    elif dataset == 'CIFAR10':
+        # root folder for the dataset
+        root = "./data/CIFAR10"
+        # get the train dataset
+        if augment:
+            train_dataset = CIFAR10Pair(root=f"{root}/train", train=True, transform=train_transform_cifar, download=True)
+        else:
+            train_dataset = CIFAR10Pair(root=f"{root}/train", train=True, transform=test_transform, download=True)
+        # get the train dataset with the test transform for validation in the semisupevised setting
+        memory_data = datasets.CIFAR10(root=f"{root}/train", train=True, transform=test_transform, download=True)
+        # get the test dataset
+        test_dataset = datasets.CIFAR10(root=f"{root}/test", train=False, transform=test_transform, download=True)
+    elif dataset == 'CIFAR100':
+        # root folder for the dataset
+        root = "./data/CIFAR100"
+        # get the train dataset
+        if augment:
+            train_dataset = CIFAR100Pair(root=f"{root}/train", train=True, transform=train_transform_cifar, download=True)
+        else:
+            train_dataset = CIFAR100Pair(root=f"{root}/train", train=True, transform=test_transform, download=True)
+        # get the train dataset with the test transform for validation in the semisupevised setting
+        memory_data = datasets.CIFAR100(root=f"{root}/train", train=True, transform=test_transform, download=True)
+        # get the test dataset
+        test_dataset = datasets.CIFAR100(root=f"{root}/test", train=False, transform=test_transform, download=True)
+
     return train_dataset, memory_data, test_dataset
 
 

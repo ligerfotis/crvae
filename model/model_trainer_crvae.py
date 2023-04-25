@@ -24,8 +24,8 @@ class CRVAE_Trainer:
         # set the seed
         torch.manual_seed(self.args.seed)
         # set the dataset specific parameters
-        self.args.color_channels = 1
-        self.args.size = [28, 28]
+        self.args.color_channels = 1 if self.args.dataset in ['mnist', 'fashion_mnist', 'emnist'] else 3
+        self.args.size = [28, 28] if self.args.dataset in ['mnist', 'fashion_mnist', 'emnist'] else [32, 32]
         # get the datasets
         self.train_dataset, self.validation_dataset, self.test_dataset = get_datasets(self.args.dataset, self.args.augment)
         # get the dataloaders
@@ -37,7 +37,7 @@ class CRVAE_Trainer:
         # create the model
         self.model = CRVAE(z_dim=self.args.z_dim, channels=self.args.color_channels, beta=self.args.beta,
                            gamma=self.args.gamma, K=self.args.K, m=0.99, T=0.1, device=self.device,
-                           loss_type=self.args.loss, model_size=self.args.model_size).to(self.device)
+                           loss_type=self.args.loss, model_size=self.args.model_size, output_size=self.args.size[0]).to(self.device)
         if self.args.verbose:
             print(self.model)
         # initialize the optimizer
