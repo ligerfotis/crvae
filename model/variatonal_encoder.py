@@ -2,25 +2,32 @@ import math
 
 import torch
 from torch import nn
+from torchvision.models import resnet
+
+from model.model_utils import get_resnet_encoder
 
 
 class Encoder(nn.Module):
 
-    def __init__(self, encoded_space_dim, color_channels, model_size):
+    def __init__(self, encoded_space_dim, color_channels, model_size, output_size):
         super().__init__()
         in_channel = color_channels
         # convolutional encoder
         if model_size == "small":
             self.encoder_cnn = nn.Sequential(
                 nn.Conv2d(in_channel, 32, 3, stride=2),
-                nn.BatchNorm2d(32),
+                # nn.BatchNorm2d(32),
                 nn.ReLU(True),
                 nn.Conv2d(32, 64, 3, stride=2, padding=1),
                 nn.ReLU(True),
             )
-            # create the mu and log var layers
-            self.encoder_lin_mu = nn.Linear(7 * 7 * 64, encoded_space_dim)
-            self.encoder_lin_var = nn.Linear(7 * 7 * 64, encoded_space_dim)
+            if output_size == 32:
+                self.encoder_lin_mu = nn.Linear(8 * 8 * 64, encoded_space_dim)
+                self.encoder_lin_var = nn.Linear(8 * 8 * 64, encoded_space_dim)
+            else:
+                # create the mu and log var layers
+                self.encoder_lin_mu = nn.Linear(7 * 7 * 64, encoded_space_dim)
+                self.encoder_lin_var = nn.Linear(7 * 7 * 64, encoded_space_dim)
         elif model_size == "medium":
             self.encoder_cnn = nn.Sequential(
                 nn.Conv2d(in_channel, 32, 3, stride=2),
@@ -35,24 +42,43 @@ class Encoder(nn.Module):
             # create the mu and log var layers
             self.encoder_lin_mu = nn.Linear(4 * 4 * 128, encoded_space_dim)
             self.encoder_lin_var = nn.Linear(4 * 4 * 128, encoded_space_dim)
-        else:
+        elif model_size == "tiny":
             self.encoder_cnn = nn.Sequential(
                 nn.Conv2d(in_channel, 32, 3, stride=2),
-                nn.BatchNorm2d(32),
-                nn.ReLU(True),
-                nn.Conv2d(32, 64, 3, stride=2, padding=1),
-                nn.BatchNorm2d(64),
-                nn.ReLU(True),
-                nn.Conv2d(64, 128, 3, stride=2, padding=1),
-                nn.BatchNorm2d(128),
-                nn.ReLU(True),
-                nn.Conv2d(128, 256, 3, stride=2, padding=1),
-                nn.BatchNorm2d(256),
                 nn.ReLU(True),
             )
             # create the mu and log var layers
-            self.encoder_lin_mu = nn.Linear(4 * 4 * 256, encoded_space_dim)
-            self.encoder_lin_var = nn.Linear(4 * 4 * 256, encoded_space_dim)
+            self.encoder_lin_mu = nn.Linear(13 * 13 * 32, encoded_space_dim)
+            self.encoder_lin_var = nn.Linear(13 * 13 * 32, encoded_space_dim)
+
+        elif model_size == "large":
+            self.encoder_cnn = nn.Sequential(
+                nn.Conv2d(in_channel, 32, 3, stride=2),
+                # nn.BatchNorm2d(32),
+                nn.ReLU(True),
+                nn.Conv2d(32, 64, 3, stride=2, padding=1),
+                # nn.BatchNorm2d(64),
+                nn.ReLU(True),
+                nn.Conv2d(64, 128, 3, stride=2, padding=1),
+                # nn.BatchNorm2d(128),
+                nn.ReLU(True),
+                nn.Conv2d(128, 256, 3, stride=2, padding=1),
+                # nn.BatchNorm2d(256),
+                nn.ReLU(True),
+            )
+            # create the mu and log var layers
+            self.encoder_lin_mu = nn.Linear(2 * 2 * 256, encoded_space_dim)
+            self.encoder_lin_var = nn.Linear(2 * 2 * 256, encoded_space_dim)
+        elif model_size == "resnet":
+            self.resnet_arch_encoder = getattr(resnet, 'resnet18')(pretrained=False)
+            self.encoder_cnn = get_resnet_encoder(color_channels, self.resnet_arch_encoder)
+            del self.resnet_arch_encoder
+
+            # create the mu and log var layers
+            self.encoder_lin_mu = nn.Linear(1 * 1 * 256, encoded_space_dim)
+            self.encoder_lin_var = nn.Linear(1 * 1 * 256, encoded_space_dim)
+        else:
+            raise NotImplementedError
         # flattening layer
         self.flatten = nn.Flatten(start_dim=1)
         # relu layer
@@ -132,3 +158,4 @@ def log_sum_exp(value, dim=None, keepdim=False):
         m = torch.max(value)
         sum_exp = torch.sum(torch.exp(value - m))
         return m + torch.log(sum_exp)
+

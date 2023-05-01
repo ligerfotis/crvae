@@ -29,7 +29,8 @@ class VAE_Trainer:
         self.args.color_channels = 1 if self.args.dataset in ['MNIST', 'FashionMNIST', 'EMNIST'] else 3
         self.args.size = [28, 28] if self.args.dataset in ['MNIST', 'FashionMNIST', 'EMNIST'] else [32, 32]
         # get the datasets
-        self.train_dataset, self.validation_dataset, self.test_dataset = get_datasets(self.args.dataset, self.args.augment)
+        self.train_dataset, self.validation_dataset, self.test_dataset = get_datasets(self.args.dataset,
+                                                                                      self.args.augment)
         # get the dataloaders
         self.train_loader, self.validation_loader, self.test_loader = get_dataloaders(self.train_dataset,
                                                                                       self.validation_dataset,
@@ -38,14 +39,22 @@ class VAE_Trainer:
         print("Training on {}".format(self.device))
         # create the model
         self.model = VAE(z_dim=self.args.z_dim, channels=self.args.color_channels, beta=self.args.beta,
-                         device=self.device,loss_type=self.args.loss, model_size=self.args.model_size, output_size=self.args.size[0]).to(self.device)
+                         device=self.device, loss_type=self.args.loss, model_size=self.args.model_size,
+                         output_size=self.args.size[0]).to(self.device)
         if self.args.verbose:
             print(self.model)
         # initialize the optimizer
         self.optimizer = get_optimizer(self.model.parameters(), self.args)
         # get the total number of trainable parameters
         pytorch_total_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
-        print(f"Model's total number of trainable parameters:{pytorch_total_params}\n")
+        # get the total number of trainable parameters of encoder
+        pytorch_total_params_encoder = sum(p.numel() for p in self.model.encoder.parameters() if p.requires_grad)
+        # get the total number of trainable parameters of decoder
+        pytorch_total_params_decoder = sum(p.numel() for p in self.model.decoder.parameters() if p.requires_grad)
+        # print the total number of trainable parameters
+        print("Total number of trainable parameters: {}".format(pytorch_total_params))
+        print("Total number of trainable parameters of encoder: {}".format(pytorch_total_params_encoder))
+        print("Total number of trainable parameters of decoder: {}".format(pytorch_total_params_decoder))
         # retrieve the name of the model
         self.model_name = f"{self.args.dataset}_beta{self.args.beta}_gamma{self.args.gamma}_crvae_custom_l{self.args.z_dim}_s{self.args.seed}"
         # Create a discriminator model. It wil be used to compute the mutual information (MI) between an image and
@@ -213,7 +222,7 @@ class VAE_Trainer:
                                  eval_kl.item()])
             # plot the image reconstruction
             reconstructed_img_array = plot_image_reconstruction(test_batch, reconstruction, self.args, print_image=True,
-                                      model_name=self.model_name)
+                                                                model_name=self.model_name)
             reconstructed_name = f"Test reconstruction epoch at {epoch} with loss {eval_loss}"
             reconstructed_image = wandb.Image(reconstructed_img_array, caption=reconstructed_name)
             # Save logs in wandb
@@ -237,13 +246,12 @@ class VAE_Trainer:
                            "test_kl_loss": eval_kl.item(),
                            "reconstructed_img": reconstructed_image})
 
-
         # final epoch
         if epoch == self.args.epochs:
             # plot the latent space of the test data using t-SNE
             tsne_title = f"Test data latent space at epoch {epoch}"
             tsne_img_array, tsne_name = viz_latent_space(tsne_title, self.model, self.test_dataset, self.args,
-                             print_image=True, model_name=self.model_name)
+                                                         print_image=True, model_name=self.model_name)
             if wandb_log:
                 # Save latent space in wandb
                 wandb.log({"latent_space": wandb.Image(tsne_img_array, tsne_name)})

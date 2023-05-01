@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from model.decoder import Decoder
+from model.decoder import Decoder, PixelCNNDecoderV2
 from utils import recon_loss
 from model.variatonal_encoder import Encoder
 
@@ -23,10 +23,16 @@ class CRVAE(nn.Module):
         self.m = m
         self.T = T
         self.device = device
-        self.encoder = Encoder(encoded_space_dim=z_dim, color_channels=channels, model_size=model_size)
-        self.encoder_target = Encoder(encoded_space_dim=z_dim, color_channels=channels, model_size=model_size)
-        self.decoder = Decoder(encoded_space_dim=z_dim, color_channels=channels, output_size=output_size)
+        # self.encoder = Encoder(encoded_space_dim=z_dim, color_channels=channels, model_size=model_size, output_size=output_size)
+        # self.decoder = Decoder(encoded_space_dim=z_dim, color_channels=channels, output_size=output_size)
+        self.encoder = Encoder(encoded_space_dim=z_dim, color_channels=channels, model_size=model_size,
+                               output_size=output_size)
+        self.encoder_target = Encoder(encoded_space_dim=z_dim, color_channels=channels, model_size=model_size, output_size=output_size)
 
+        if model_size == 'resnet':
+            self.decoder = PixelCNNDecoderV2(encoded_space_dim=z_dim, color_channels=channels, output_size=output_size)
+        else:
+            self.decoder = Decoder(encoded_space_dim=z_dim, color_channels=channels, output_size=output_size)
         self.beta = beta
         self.gamma = gamma
         # initialize the key encoder to be the same as the query encoder

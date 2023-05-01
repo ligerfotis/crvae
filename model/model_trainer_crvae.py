@@ -42,9 +42,17 @@ class CRVAE_Trainer:
             print(self.model)
         # initialize the optimizer
         self.optimizer = get_optimizer(self.model.parameters(), self.args)
+
         # get the total number of trainable parameters
         pytorch_total_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
-        print(f"Model's total number of trainable parameters:{pytorch_total_params}\n")
+        # get the total number of trainable parameters of encoder
+        pytorch_total_params_encoder = sum(p.numel() for p in self.model.encoder.parameters() if p.requires_grad)
+        # get the total number of trainable parameters of decoder
+        pytorch_total_params_decoder = sum(p.numel() for p in self.model.decoder.parameters() if p.requires_grad)
+        # print the total number of trainable parameters
+        print("Total number of trainable parameters: {}".format(pytorch_total_params))
+        print("Total number of trainable parameters of encoder: {}".format(pytorch_total_params_encoder))
+        print("Total number of trainable parameters of decoder: {}".format(pytorch_total_params_decoder))
         # retrieve the name of the model
         self.model_name = f"{self.args.dataset}_beta{self.args.beta}_gamma{self.args.gamma}_crvae_custom_l{self.args.z_dim}_s{self.args.seed}"
         # Create a discriminator model. It wil be used to compute the mutual information (MI) between an image and
