@@ -99,6 +99,8 @@ class CRVAE_Trainer:
         self.optimizer.zero_grad()
         # compute the gradients w.r.t. elbo loss
         loss.backward()
+        # clip the gradients
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
         # update the parameters
         self.optimizer.step()
         return loss.item(), reconstruction_loss.item(), kld.item(), contrastive_loss
@@ -153,58 +155,6 @@ class CRVAE_Trainer:
             # evaluate the model
             self.evaluate(epoch, wandb_log=self.args.wandb)
         wandb.finish()
-
-    def train_loop2(self):
-        # resume from a model checkpoint
-        if self.args.resume:
-            checkpoint = torch.load(self.args.load_path)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            start_epoch = checkpoint['epoch']
-        else:
-            start_epoch = 1
-
-        for epoch in range(start_epoch, self.args.epochs + 1):
-            # set model parameters to trainable
-            self.model.train()
-            # initialize the training bar
-            train_bar = tqdm(zip(self.train_loader, self.validation_loader), position=0, leave=True)
-            if 0 < epoch < 10:
-                self.alpha = 1
-                self.beta = 1
-                self.gamma = 0
-            else:
-                self.alpha = 0.5
-                self.beta = 0.5
-                self.gamma = 1
-
-            # iterate over the training data
-            for img_pairs in train_bar:
-                img_pair = img_pairs[0]
-                img_org = img_pairs[0][0]
-                # perform a training step
-                self.loss, bce_loss, kld, self.contrastive_loss = self.train_step(img_pair, img_org)
-                # update the training losses
-                self.total_loss += self.loss
-                self.total_reconstruction_loss += bce_loss
-                self.total_kl_loss += kld
-                self.total_contrastive_loss += self.contrastive_loss
-                # update the progress bar
-                train_bar.set_description(
-                    'Epoch: [{}/{}] '
-                    'lr: {:.6f} '
-                    'Loss: {:.4f} '
-                    'Rec/tion: {:.4f} '
-                    'KL: {:.4f} '
-                    'NCE: {:.4f} '
-                    'alpha: {:.4f} '
-                    'beta: {:.4f} '
-                    'gamma: {:.4f} '
-                    'delta: {:.4f} '.format(epoch, self.args.epochs, self.args.learning_rate, self.loss, bce_loss, kld,
-                                            self.contrastive_loss, self.alpha, self.beta,
-                                            self.gamma, self.args.delta))
-            # evaluate the model
-            self.evaluate(epoch, wandb_log=self.args.wandb)
 
     def evaluate(self, epoch, wandb_log=True):
         # Averaging out loss over entire batch
