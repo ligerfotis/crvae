@@ -60,6 +60,16 @@ def plot_image_reconstruction(test_batch, reconstruction, args, print_image, mod
 
 
 def viz_latent_space(title, model, test_dataset, args, print_image, model_name):
+    """
+    This function plots the latent space of the test set and saves the figure in the results' folder.
+    :param title:
+    :param model:
+    :param test_dataset:
+    :param args:
+    :param print_image:
+    :param model_name:
+    :return:
+    """
     print("Visualizing latent space with tSNE")
     data, labels = [], []
     fig = plt.figure()

@@ -311,6 +311,8 @@ class CRVAE_Trainer:
             tsne_title = f"Test data latent space at epoch {epoch}"
             tsne_img_array, tsne_name = viz_latent_space(tsne_title, self.model, self.test_dataset, self.args,
                              print_image=True, model_name=self.model_name)
+            # plot the
             if wandb_log:
                 # Save latent space in wandb
-                wandb.log({"latent_space": wandb.Image(tsne_img_array, tsne_name)})
+                tsne_image = wandb.Image(tsne_img_array, caption=tsne_name)
+                wandb.log({"latent_space": tsne_image})

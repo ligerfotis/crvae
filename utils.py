@@ -381,10 +381,19 @@ def representation_metric_test(net, memory_data_loader, test_data_loader, knn_k,
     return knn, result_linear
 
 
+class CNNClassifier:
+    pass
+
+
 def encode_image(batch, model, inference=False):
     """
     This function is used to encode the image into the latent space.
     """
+    # check if the model's name is CNNClassifier
+    if model.__class__.__name__ == "CNNClassifier":
+        feature = model.encoder(batch)
+        return feature
+        
     data = batch.cuda(non_blocking=True)
     feature, feature_mu, feature_logvar = model.encoder(data)
     if inference:
